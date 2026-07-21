@@ -80,7 +80,7 @@ try {
         const token = jwt.sign(
             { userId: user._id, email: user.email },
             process.env.JWT_SECRET,
-            { expiresIn: '1d' } // Token 1 din tak valid rahega
+            { expiresIn: '1d' } // Token valid for 1 day
         );
 
 // 4. Send response with token (excluding password for security)
@@ -102,5 +102,68 @@ try {
         });
 }
 })
- 
+
+// ==================== Google login ====================
+router.post('/google', async (req, res) => {
+    try {
+        const { access_token } = req.body;
+
+        if (!access_token) {
+            return res.status(400).json({
+                success: false,
+                message: 'Access token missing!'
+            });
+        }
+
+        // Fetch the user's profile from Google using the access token
+        const googleRes = await fetch(
+            `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${access_token}`
+        );
+        const profile = await googleRes.json();
+
+        if (!profile?.email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Could not retrieve email from Google.'
+            });
+        }
+
+        let user = await User.findOne({ email: profile.email });
+
+        if (!user) {
+            // New user via Google — no password field is set
+            user = new User({
+                fullName: profile.name,
+                email: profile.email,
+                authProvider: 'google',
+                isTermsAccepted: true, // consent already covered by the Google OAuth flow
+            });
+            await user.save();
+        }
+
+        const token = jwt.sign(
+            { userId: user._id, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: 'Google login successful!',
+            token,
+            user: {
+                id: user._id,
+                fullName: user.fullName,
+                email: user.email
+            }
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
 export default router;

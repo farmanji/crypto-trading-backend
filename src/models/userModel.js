@@ -22,9 +22,20 @@ const userSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            required: [true, 'Password is required'],
+            // Only required for local signups — Google accounts don't have a password
+            required: [
+                function () {
+                    return this.authProvider === 'local';
+                },
+                'Password is required'
+            ],
             minlength: [8, 'Password must be at least 8 characters long'],
             select: false 
+        },
+        authProvider: {
+            type: String,
+            enum: ['local', 'google'],
+            default: 'local'
         },
         isTermsAccepted: {
             type: Boolean,

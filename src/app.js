@@ -5,6 +5,7 @@ import userRouter from './controllers/userRoute.js';
 
 export const app = express();
 
+console.log('CryptoX API Starting up')
 
 app.use(cors({
   origin: true, 
